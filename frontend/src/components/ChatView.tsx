@@ -15,6 +15,7 @@ import {
 import { checkHealth, listDocuments, queryDocuments, uploadDocuments } from '../api/client'
 import type { DocumentItem, QueryResponse } from '../types/api'
 import { SourcePanel } from './SourcePanel'
+import { MarkdownMessage } from './MarkdownMessage'
 
 interface ChatViewProps {
   onBack: () => void
@@ -483,7 +484,11 @@ export function ChatView({ onBack }: ChatViewProps) {
                           : 'liquid-glass rounded-bl-md text-white/90'
                       }`}
                     >
-                      <p className="whitespace-pre-wrap">{message.content}</p>
+                      {message.role === 'assistant' ? (
+                        <MarkdownMessage content={message.content} />
+                      ) : (
+                        <p className="whitespace-pre-wrap">{message.content}</p>
+                      )}
                     </div>
                   </article>
                 ))}
@@ -535,14 +540,14 @@ export function ChatView({ onBack }: ChatViewProps) {
                       aria-selected={selected}
                       disabled={busy}
                       onClick={() => setMode(item.id)}
-                      className={`inline-flex min-h-10 flex-1 cursor-pointer items-center justify-center gap-2 rounded-full px-3 text-[12px] font-medium transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4eebc8] disabled:cursor-not-allowed disabled:opacity-50 sm:text-[13px] ${
+                      className={`inline-flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-full px-3 text-[12px] font-medium transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4eebc8] disabled:cursor-not-allowed disabled:opacity-50 sm:text-[13px] ${
                         selected
                           ? 'bg-white text-[#050608]'
                           : 'text-white/60 hover:bg-white/[0.06] hover:text-white'
                       }`}
                     >
                       <Icon size={15} aria-hidden />
-                      <span className="hidden xs:inline sm:inline">{item.short}</span>
+                      <span className="hidden sm:inline">{item.short}</span>
                     </button>
                   )
                 })}
@@ -588,7 +593,7 @@ export function ChatView({ onBack }: ChatViewProps) {
                       value={selectedDoc}
                       onChange={(e) => setSelectedDoc(e.target.value)}
                       disabled={busy}
-                      className="min-h-10 w-full cursor-pointer rounded-xl border border-white/15 bg-[#0a0c10] px-3 text-[13px] text-white/90 outline-none transition-colors hover:border-white/30 focus:border-[#4eebc8]/50 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="min-h-11 w-full cursor-pointer rounded-xl border border-white/15 bg-[#0a0c10] px-3 text-[13px] text-white/90 outline-none transition-colors hover:border-white/30 focus:border-[#4eebc8]/50 disabled:cursor-not-allowed disabled:opacity-50"
                       aria-label="Documento o imagen a consultar"
                     >
                       <option value="">Todos los archivos indexados</option>

@@ -233,7 +233,7 @@ export function LandingSections({ onOpenChat }: LandingSectionsProps) {
                 <span className={`font-[family-name:var(--font-mono)] text-[12px] font-medium ${row.tone}`}>
                   {row.method}
                 </span>
-                <span className="font-[family-name:var(--font-mono)] text-[13px] text-white/80">
+                <span className="font-[family-name:var(--font-mono)] text-[13px] text-white/80 break-all">
                   {row.path}
                 </span>
                 <span className="font-[family-name:var(--font-mono)] text-[12px] text-white/40">

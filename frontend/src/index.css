@@ -105,3 +105,145 @@ body {
   mask-composite: exclude;
   pointer-events: none;
 }
+
+/* Markdown in assistant chat bubbles */
+.chat-md {
+  color: rgba(255, 255, 255, 0.9);
+  word-break: break-word;
+}
+
+.chat-md > :first-child {
+  margin-top: 0;
+}
+
+.chat-md > :last-child {
+  margin-bottom: 0;
+}
+
+.chat-md p {
+  margin: 0.55em 0;
+}
+
+.chat-md h1,
+.chat-md h2,
+.chat-md h3,
+.chat-md h4 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0.9em 0 0.4em;
+  color: #fff;
+}
+
+.chat-md h1 {
+  font-size: 1.25em;
+}
+
+.chat-md h2 {
+  font-size: 1.12em;
+}
+
+.chat-md h3,
+.chat-md h4 {
+  font-size: 1.02em;
+}
+
+.chat-md ul,
+.chat-md ol {
+  margin: 0.5em 0;
+  padding-left: 1.25em;
+}
+
+.chat-md li {
+  margin: 0.25em 0;
+}
+
+.chat-md li::marker {
+  color: rgba(78, 235, 200, 0.7);
+}
+
+.chat-md strong {
+  color: #fff;
+  font-weight: 600;
+}
+
+.chat-md em {
+  font-family: var(--font-serif);
+  font-style: italic;
+  color: rgba(232, 168, 56, 0.95);
+}
+
+.chat-md a {
+  color: #4eebc8;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.chat-md a:hover {
+  color: #6ff0d4;
+}
+
+.chat-md code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.35rem;
+  padding: 0.1em 0.35em;
+}
+
+.chat-md pre {
+  margin: 0.75em 0;
+  padding: 0.85em 1em;
+  overflow-x: auto;
+  border-radius: 0.75rem;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.chat-md pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: 0.82em;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.chat-md blockquote {
+  margin: 0.7em 0;
+  padding: 0.15em 0 0.15em 0.9em;
+  border-left: 2px solid rgba(232, 168, 56, 0.7);
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.chat-md hr {
+  margin: 1em 0;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.chat-md table {
+  width: 100%;
+  margin: 0.75em 0;
+  border-collapse: collapse;
+  font-size: 0.92em;
+  overflow: hidden;
+  border-radius: 0.5rem;
+}
+
+.chat-md th,
+.chat-md td {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.4em 0.65em;
+  text-align: left;
+}
+
+.chat-md th {
+  background: rgba(78, 235, 200, 0.1);
+  color: #4eebc8;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}

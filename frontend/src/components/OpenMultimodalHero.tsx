@@ -279,7 +279,7 @@ export function OpenMultimodalHero({ onOpenChat }: { onOpenChat?: () => void }) 
         </div>
       </div>
 
-      <div className="relative z-10 mx-auto flex min-h-dvh max-w-7xl flex-col justify-center px-5 pb-16 pt-28 md:px-10 md:pt-32">
+      <div className="relative z-10 mx-auto flex min-h-dvh max-w-7xl flex-col justify-center px-4 pb-16 pt-24 sm:px-5 md:px-10 md:pt-32">
         <p
           className="animate-rise font-[family-name:var(--font-body)] text-[11px] font-bold uppercase tracking-[0.2em] text-[#4eebc8]"
           style={{ animationDelay: '120ms' }}
@@ -290,7 +290,7 @@ export function OpenMultimodalHero({ onOpenChat }: { onOpenChat?: () => void }) 
         <div className="mt-10 flex flex-col gap-10 sm:mt-12 md:mt-14 md:flex-row md:items-start md:justify-between md:gap-12">
           <div className="min-w-0 flex-1">
             <h1
-              className="animate-rise max-w-5xl font-[family-name:var(--font-display)] text-[38px] font-bold uppercase leading-[0.92] tracking-[-0.03em] sm:text-[48px] md:text-[68px] lg:text-[76px]"
+              className="animate-rise max-w-5xl font-[family-name:var(--font-display)] text-[32px] font-bold uppercase leading-[1.05] tracking-[-0.02em] sm:text-[48px] sm:leading-[0.92] sm:tracking-[-0.03em] md:text-[68px] lg:text-[76px]"
               style={{ animationDelay: '200ms' }}
             >
               Ingest docs.
@@ -303,7 +303,7 @@ export function OpenMultimodalHero({ onOpenChat }: { onOpenChat?: () => void }) 
             </h1>
 
             <p
-              className="animate-rise mt-6 max-w-xl text-[14px] leading-relaxed text-white/70 md:text-[15px]"
+              className="animate-rise mt-5 max-w-xl text-[14px] leading-relaxed text-white/70 sm:mt-6 md:text-[15px]"
               style={{ animationDelay: '320ms' }}
             >
               Advanced RAG pipeline with LlamaIndex, LlamaParse, and Google Gemini
@@ -327,7 +327,7 @@ export function OpenMultimodalHero({ onOpenChat }: { onOpenChat?: () => void }) 
             </div>
 
             <div
-              className="animate-rise mt-8 flex flex-wrap gap-3"
+              className="animate-rise mt-6 flex flex-wrap gap-3 sm:mt-8"
               style={{ animationDelay: '480ms' }}
             >
               <button
@@ -366,7 +366,7 @@ export function OpenMultimodalHero({ onOpenChat }: { onOpenChat?: () => void }) 
             </div>
           </div>
 
-          <div className="flex justify-end md:pt-1">
+          <div className="flex justify-center md:justify-end md:pt-1">
             <LiquidGlassCard />
           </div>
         </div>
