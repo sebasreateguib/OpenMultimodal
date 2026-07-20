@@ -221,8 +221,6 @@ python main.py --serve
 
 ## Notas útiles
 
-- **Cuota Gemini**: el free tier se agota rápido (sobre todo al captionar muchas imágenes). Si ves `429` o `limit: 0`, cambia de modelo, espera el reset o activa billing.
-- **Modelos retirados**: no uses `text-embedding-004` ni `gemini-2.0-flash` / `gemini-2.5-flash` si tu cuenta es nueva; el proyecto ya apunta a `gemini-embedding-2` y `gemini-3.5-flash`.
 - **CLIP** es opcional. Sin PyTorch/CLIP el sistema usa captions de Gemini.
 - **Filtro por documento** funciona por `file_name` / basename de `file_path`. Tras cambiar el modelo de embeddings, vuelve a indexar.
 
