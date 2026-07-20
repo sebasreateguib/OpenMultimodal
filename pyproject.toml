@@ -1,0 +1,36 @@
+[project]
+name = "multimodal-rag-agent"
+version = "0.1.0"
+description = "Multimodal RAG Agent Architecture"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "python-multipart",
+    "pydantic-settings",
+    "tenacity",
+    "llama-index",
+    "llama-parse",
+    "google-genai",
+    "llama-index-llms-google-genai",
+    "llama-index-embeddings-google-genai",
+    "llama-index-embeddings-clip",
+    "llama-index-vector-stores-qdrant",
+    "qdrant-client",
+    "pillow",
+]
+
+[project.scripts]
+multimodal-rag = "main:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["main"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
