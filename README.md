@@ -5,6 +5,9 @@ Agente **Multimodal RAG** (Retrieval-Augmented Generation) con **LlamaIndex**, *
 Subes PDFs, diagramas e imágenes → se indexan (texto + visuales) → preguntas en el chat y Gemini responde con evidencia de las fuentes recuperadas.
 
 ---
+## Demo
+<video src="https://github.com/user-attachments/assets/4cb2da27-a13e-46b5-8a2a-563b3e184422" controls="controls" style="max-width: 100%;">
+</video>
 
 ## Stack
 
@@ -24,7 +27,7 @@ Subes PDFs, diagramas e imágenes → se indexan (texto + visuales) → pregunta
 
 ```text
 ┌─────────────┐     ┌──────────────┐     ┌─────────────┐     ┌──────────┐
-│ 1. Subir    │ ──▶ │ 2. Parsear   │ ──▶ │ 3. Embed &  │ ──▶ │ 4. Guardar│
+│ 1. Subir    │ ──▶ │ 2. Parsear   │ ──▶ │ 3. Embed &  │ ──▶ │ 4.Guardar│
 │ PDF/imagen  │     │ LlamaParse   │     │ indexar     │     │ Qdrant   │
 └─────────────┘     └──────────────┘     └─────────────┘     └────┬─────┘
                                                                   │
