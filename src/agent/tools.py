@@ -96,11 +96,24 @@ async def query_documents_tool(
     query: str,
     settings: Settings | None = None,
     file_name: str | None = None,
+    provider: str | None = None,
+    model_id: str | None = None,
 ) -> QueryResult:
-    """Agent tool: retrieve Top-K text + Top-M images and synthesize with Gemini."""
+    """Retrieve Top-K text + Top-M images and synthesize with the chosen LLM."""
     settings = settings or get_settings()
     index = get_or_load_index(settings)
-    engine = MultimodalQueryEngine(index=index, settings=settings)
+    from src.llm import ProviderId
+
+    prov: ProviderId | None = None
+    if provider in ("gemini", "groq"):
+        prov = provider  # type: ignore[assignment]
+
+    engine = MultimodalQueryEngine(
+        index=index,
+        settings=settings,
+        provider=prov,
+        model_id=model_id,
+    )
     return await engine.aquery(query, file_name=file_name)
 
 

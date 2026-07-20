@@ -18,11 +18,17 @@ class Settings(BaseSettings):
 
     gemini_api_key: str = Field(..., description="Google Gemini API key")
     llama_cloud_api_key: str = Field(..., description="LlamaCloud / LlamaParse API key")
+    groq_api_key: Optional[str] = Field(
+        default=None,
+        description="Optional Groq API key for text LLMs",
+    )
     qdrant_url: str = Field(default="http://localhost:6333")
     qdrant_api_key: Optional[str] = Field(default=None)
 
     text_embedding_model: str = Field(default="gemini-embedding-2")
     gemini_model: str = Field(default="gemini-3.5-flash")
+    groq_model: str = Field(default="llama-3.3-70b-versatile")
+    default_llm_provider: str = Field(default="gemini")  # gemini | groq
     similarity_top_k: int = Field(default=5)
     image_similarity_top_k: int = Field(default=3)
 

@@ -12,10 +12,12 @@ import {
   Upload,
   X,
 } from 'lucide-react'
-import { checkHealth, listDocuments, queryDocuments, uploadDocuments } from '../api/client'
-import type { DocumentItem, QueryResponse } from '../types/api'
+import { checkHealth, listDocuments, listModels, queryDocuments, uploadDocuments } from '../api/client'
+import type { DocumentItem, LlmProvider, ModelItem, QueryResponse } from '../types/api'
 import { SourcePanel } from './SourcePanel'
 import { MarkdownMessage } from './MarkdownMessage'
+import { ModeTab } from './ModeTab'
+import { DemoSafeButton } from './DemoSafeButton'
 
 interface ChatViewProps {
   onBack: () => void
@@ -106,12 +108,15 @@ export function ChatView({ onBack }: ChatViewProps) {
   const [dragOver, setDragOver] = useState(false)
   const [documents, setDocuments] = useState<DocumentItem[]>([])
   const [selectedDoc, setSelectedDoc] = useState<string>('') // '' = all
+  const [models, setModels] = useState<ModelItem[]>([])
+  const [selectedModelKey, setSelectedModelKey] = useState<string>('') // provider::model_id
 
   const endRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const errorId = useId()
   const modeTabId = useId()
+  const fileInputId = useId()
 
   const refreshHealth = useCallback(async () => {
     try {
@@ -135,15 +140,35 @@ export function ChatView({ onBack }: ChatViewProps) {
     }
   }, [])
 
+  const refreshModels = useCallback(async () => {
+    try {
+      const res = await listModels()
+      setModels(res.models)
+      setSelectedModelKey((current) => {
+        if (current && res.models.some((m) => `${m.provider}::${m.model_id}` === current)) {
+          return current
+        }
+        const fallback = res.models.find(
+          (m) =>
+            m.provider === res.default_provider && m.model_id === res.default_model_id,
+        ) ?? res.models[0]
+        return fallback ? `${fallback.provider}::${fallback.model_id}` : ''
+      })
+    } catch {
+      // ignore
+    }
+  }, [])
+
   useEffect(() => {
     void refreshHealth()
     void refreshDocuments()
+    void refreshModels()
     const id = window.setInterval(() => {
       void refreshHealth()
       void refreshDocuments()
     }, 30000)
     return () => window.clearInterval(id)
-  }, [refreshHealth, refreshDocuments])
+  }, [refreshHealth, refreshDocuments, refreshModels])
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -184,9 +209,13 @@ export function ChatView({ onBack }: ChatViewProps) {
     ])
 
     try {
+      const [provider, ...rest] = selectedModelKey.split('::')
+      const model_id = rest.join('::') || null
       const response = await queryDocuments({
         query,
         file_name: selectedDoc || null,
+        provider: (provider as LlmProvider) || null,
+        model_id,
       })
       setLatest(response)
       setMessages((prev) => [
@@ -291,6 +320,52 @@ export function ChatView({ onBack }: ChatViewProps) {
     addPendingFiles(e.dataTransfer.files)
   }
 
+  // Demo / Recordly: keyboard never depends on bottom-of-screen clicks
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null
+      const tag = target?.tagName
+      const inField =
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        tag === 'SELECT' ||
+        Boolean(target?.isContentEditable)
+
+      if (!inField && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        if (e.key === '1') {
+          e.preventDefault()
+          if (!loading && !uploading) setMode('chat')
+          return
+        }
+        if (e.key === '2') {
+          e.preventDefault()
+          if (!loading && !uploading) setMode('images')
+          return
+        }
+        if (e.key === '3') {
+          e.preventDefault()
+          if (!loading && !uploading) setMode('documents')
+          return
+        }
+      }
+
+      if (
+        mode !== 'chat' &&
+        !loading &&
+        !uploading &&
+        pendingFiles.length > 0 &&
+        !inField &&
+        (e.key === 'Enter' || e.key === 'i' || e.key === 'I')
+      ) {
+        e.preventDefault()
+        void confirmUpload()
+      }
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [mode, loading, uploading, pendingFiles])
+
   const sourceCount =
     (latest?.text_sources.length ?? 0) + (latest?.image_sources.length ?? 0)
   const busy = loading || uploading
@@ -304,61 +379,82 @@ export function ChatView({ onBack }: ChatViewProps) {
         aria-hidden
       />
 
-      <header className="relative z-20 flex shrink-0 items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-6 md:px-8">
-        <div className="flex min-w-0 items-center gap-3 sm:gap-5">
-          <button
-            type="button"
-            onClick={onBack}
-            className="inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-white/15 bg-white/[0.03] px-2.5 text-xs text-white transition-colors duration-200 hover:border-white/30 hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4eebc8]"
-            aria-label="Volver al inicio"
-          >
-            <ArrowLeft size={14} aria-hidden />
-            <span className="hidden sm:inline">Inicio</span>
-          </button>
+      <header className="relative z-50 flex shrink-0 flex-col border-b border-white/10 bg-[#050608]">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6 md:px-8">
+          <div className="flex min-w-0 items-center gap-3 sm:gap-5">
+            <DemoSafeButton
+              onActivate={onBack}
+              className="inline-flex h-8 cursor-pointer items-center justify-center gap-1.5 rounded-full border border-white/15 bg-white/[0.03] px-2.5 text-xs text-white transition-colors duration-200 hover:border-white/30 hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4eebc8]"
+              aria-label="Volver al inicio"
+            >
+              <ArrowLeft size={14} aria-hidden />
+              <span className="hidden sm:inline">Inicio</span>
+            </DemoSafeButton>
 
-          <div className="min-w-0">
-            <p className="truncate font-[family-name:var(--font-display)] text-base font-semibold tracking-tight sm:text-lg">
-              OpenMultimodal
-            </p>
-            <p className="truncate font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.16em] text-white/40">
-              {activeMode.label}
-            </p>
+            <div className="min-w-0">
+              <p className="truncate font-[family-name:var(--font-display)] text-base font-semibold tracking-tight sm:text-lg">
+                OpenMultimodal
+              </p>
+              <p className="truncate font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.16em] text-white/40">
+                {activeMode.label}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-white/70"
+              role="status"
+            >
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  apiStatus === 'online'
+                    ? 'bg-[#4eebc8] shadow-[0_0_10px_rgba(78,235,200,0.8)]'
+                    : apiStatus === 'offline'
+                      ? 'bg-red-400'
+                      : 'animate-pulse bg-white/40'
+                }`}
+                aria-hidden
+              />
+              <span className="hidden sm:inline">
+                {apiStatus === 'online'
+                  ? 'API en línea'
+                  : apiStatus === 'offline'
+                    ? 'API offline'
+                    : 'Conectando…'}
+              </span>
+            </span>
+
+            <DemoSafeButton
+              onActivate={() => setSourcesOpen(true)}
+              className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-full border border-white/15 bg-white/[0.03] px-3 text-sm transition-colors duration-200 hover:border-[#4eebc8]/40 hover:text-[#4eebc8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4eebc8] lg:hidden"
+              aria-label="Ver fuentes recuperadas"
+            >
+              <PanelRight size={18} aria-hidden />
+              <span className="font-[family-name:var(--font-mono)] text-[11px]">{sourceCount}</span>
+            </DemoSafeButton>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3">
-          <span
-            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[11px] text-white/70"
-            role="status"
+        {/* Modes at the TOP — Recordly/overlays often block the bottom of the screen */}
+        <div className="relative z-50 border-t border-white/10 px-4 py-2.5 sm:px-6 md:px-8">
+          <div
+            role="tablist"
+            aria-label="Modo de trabajo"
+            className="mx-auto flex max-w-3xl gap-1 rounded-full border border-white/15 bg-[#0c0e12] p-1"
           >
-            <span
-              className={`h-2 w-2 rounded-full ${
-                apiStatus === 'online'
-                  ? 'bg-[#4eebc8] shadow-[0_0_10px_rgba(78,235,200,0.8)]'
-                  : apiStatus === 'offline'
-                    ? 'bg-red-400'
-                    : 'animate-pulse bg-white/40'
-              }`}
-              aria-hidden
-            />
-            <span className="hidden sm:inline">
-              {apiStatus === 'online'
-                ? 'API en línea'
-                : apiStatus === 'offline'
-                  ? 'API offline'
-                  : 'Conectando…'}
-            </span>
-          </span>
-
-          <button
-            type="button"
-            onClick={() => setSourcesOpen(true)}
-            className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-full border border-white/15 bg-white/[0.03] px-3 text-sm transition-colors duration-200 hover:border-[#4eebc8]/40 hover:text-[#4eebc8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4eebc8] lg:hidden"
-            aria-label="Ver fuentes recuperadas"
-          >
-            <PanelRight size={18} aria-hidden />
-            <span className="font-[family-name:var(--font-mono)] text-[11px]">{sourceCount}</span>
-          </button>
+            {MODES.map((item) => (
+              <ModeTab
+                key={item.id}
+                id={`${modeTabId}-${item.id}`}
+                label={item.short}
+                icon={item.icon}
+                selected={mode === item.id}
+                disabled={busy}
+                onSelect={() => setMode(item.id)}
+              />
+            ))}
+          </div>
         </div>
       </header>
 
@@ -372,7 +468,7 @@ export function ChatView({ onBack }: ChatViewProps) {
             aria-label="Conversación"
           >
             {showEmpty ? (
-              <div className="mx-auto flex h-full max-w-2xl flex-col justify-center">
+              <div className="mx-auto max-w-2xl py-8 sm:py-12">
                 <div className="mb-8">
                   <p
                     className="font-[family-name:var(--font-mono)] text-[11px] font-bold uppercase tracking-[0.2em]"
@@ -410,8 +506,7 @@ export function ChatView({ onBack }: ChatViewProps) {
                     )}
                   </h1>
                   <p className="mt-4 max-w-lg text-[15px] leading-relaxed text-white/55">
-                    {activeMode.description}. Cambia de modo arriba del compositor
-                    cuando quieras.
+                    {activeMode.description}.
                   </p>
                 </div>
 
@@ -437,20 +532,19 @@ export function ChatView({ onBack }: ChatViewProps) {
                     ))}
                   </div>
                 ) : (
-                  <button
-                    type="button"
+                  <DemoSafeButton
                     disabled={busy || apiStatus === 'offline'}
-                    onClick={() => fileInputRef.current?.click()}
+                    onActivate={() => fileInputRef.current?.click()}
                     onDragOver={(e) => {
                       e.preventDefault()
                       setDragOver(true)
                     }}
                     onDragLeave={() => setDragOver(false)}
                     onDrop={onDrop}
-                    className={`liquid-glass flex min-h-[180px] w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-10 text-center transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4eebc8] disabled:cursor-not-allowed disabled:opacity-50 ${
+                    className={`flex min-h-[180px] w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-2xl border border-dashed bg-[#0c0e12] px-6 py-10 text-center transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4eebc8] disabled:cursor-not-allowed disabled:opacity-50 ${
                       dragOver
                         ? 'border-[#4eebc8]/60 bg-[#4eebc8]/10'
-                        : 'border-white/20 hover:border-white/35'
+                        : 'border-white/25 hover:border-white/40'
                     }`}
                   >
                     <Upload size={28} style={{ color: activeMode.accent }} aria-hidden />
@@ -462,7 +556,7 @@ export function ChatView({ onBack }: ChatViewProps) {
                         ? 'PNG, JPG o WEBP · se indexan para búsqueda visual'
                         : 'PDF, PPTX o DOCX · LlamaParse + Qdrant'}
                     </span>
-                  </button>
+                  </DemoSafeButton>
                 )}
               </div>
             ) : (
@@ -521,38 +615,8 @@ export function ChatView({ onBack }: ChatViewProps) {
             )}
           </div>
 
-          <div className="shrink-0 border-t border-white/10 px-4 py-4 sm:px-6 md:px-8">
+          <div className="relative z-50 shrink-0 border-t border-white/10 bg-[#050608] px-4 py-4 sm:px-6 md:px-8">
             <div className="mx-auto max-w-3xl">
-              <div
-                role="tablist"
-                aria-label="Modo de trabajo"
-                className="mb-3 flex gap-1 rounded-full border border-white/10 bg-white/[0.03] p-1"
-              >
-                {MODES.map((item) => {
-                  const Icon = item.icon
-                  const selected = mode === item.id
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      role="tab"
-                      id={`${modeTabId}-${item.id}`}
-                      aria-selected={selected}
-                      disabled={busy}
-                      onClick={() => setMode(item.id)}
-                      className={`inline-flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-full px-3 text-[12px] font-medium transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4eebc8] disabled:cursor-not-allowed disabled:opacity-50 sm:text-[13px] ${
-                        selected
-                          ? 'bg-white text-[#050608]'
-                          : 'text-white/60 hover:bg-white/[0.06] hover:text-white'
-                      }`}
-                    >
-                      <Icon size={15} aria-hidden />
-                      <span className="hidden sm:inline">{item.short}</span>
-                    </button>
-                  )
-                })}
-              </div>
-
               {error && (
                 <p
                   id={errorId}
@@ -569,43 +633,66 @@ export function ChatView({ onBack }: ChatViewProps) {
                   className="mb-3 flex items-start gap-3 rounded-xl border border-[#4eebc8]/25 bg-[#4eebc8]/10 px-4 py-3 text-[13px] text-[#4eebc8]"
                 >
                   <p className="min-w-0 flex-1 leading-relaxed">{uploadNote}</p>
-                  <button
-                    type="button"
-                    onClick={() => setUploadNote(null)}
+                  <DemoSafeButton
+                    onActivate={() => setUploadNote(null)}
                     className="inline-flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full text-[#4eebc8]/80 transition-colors duration-200 hover:bg-[#4eebc8]/15 hover:text-[#4eebc8] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4eebc8]"
                     aria-label="Cerrar aviso de carga"
                   >
                     <X size={14} aria-hidden />
-                  </button>
+                  </DemoSafeButton>
                 </div>
               )}
 
               {mode === 'chat' ? (
-                <form
-                  onSubmit={handleSubmit}
-                  className="flex flex-col gap-2"
-                >
-                  <label className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
-                    <span className="shrink-0 font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.14em] text-white/40">
-                      Preguntar sobre
-                    </span>
-                    <select
-                      value={selectedDoc}
-                      onChange={(e) => setSelectedDoc(e.target.value)}
-                      disabled={busy}
-                      className="min-h-11 w-full cursor-pointer rounded-xl border border-white/15 bg-[#0a0c10] px-3 text-[13px] text-white/90 outline-none transition-colors hover:border-white/30 focus:border-[#4eebc8]/50 disabled:cursor-not-allowed disabled:opacity-50"
-                      aria-label="Documento o imagen a consultar"
-                    >
-                      <option value="">Todos los archivos indexados</option>
-                      {documents.map((doc) => (
-                        <option key={doc.file_path} value={doc.file_name}>
-                          {doc.kind === 'image' ? '🖼' : '📄'} {doc.file_name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                <form onSubmit={handleSubmit} className="flex flex-col gap-2">
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="flex flex-col gap-1.5">
+                      <span className="shrink-0 font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.14em] text-white/40">
+                        Preguntar sobre
+                      </span>
+                      <select
+                        value={selectedDoc}
+                        onChange={(e) => setSelectedDoc(e.target.value)}
+                        disabled={busy}
+                        className="min-h-11 w-full cursor-pointer rounded-xl border border-white/15 bg-[#0a0c10] px-3 text-[13px] text-white/90 outline-none transition-colors hover:border-white/30 focus:border-[#4eebc8]/50 disabled:cursor-not-allowed disabled:opacity-50"
+                        aria-label="Documento o imagen a consultar"
+                      >
+                        <option value="">Todos los archivos indexados</option>
+                        {documents.map((doc) => (
+                          <option key={doc.file_path} value={doc.file_name}>
+                            {doc.kind === 'image' ? '🖼' : '📄'} {doc.file_name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
 
-                  <div className="liquid-glass flex items-end gap-2 rounded-2xl p-2 sm:gap-3 sm:p-2.5">
+                    <label className="flex flex-col gap-1.5">
+                      <span className="shrink-0 font-[family-name:var(--font-mono)] text-[10px] uppercase tracking-[0.14em] text-white/40">
+                        Modelo
+                      </span>
+                      <select
+                        value={selectedModelKey}
+                        onChange={(e) => setSelectedModelKey(e.target.value)}
+                        disabled={busy || models.length === 0}
+                        className="min-h-11 w-full cursor-pointer rounded-xl border border-white/15 bg-[#0a0c10] px-3 text-[13px] text-white/90 outline-none transition-colors hover:border-white/30 focus:border-[#4eebc8]/50 disabled:cursor-not-allowed disabled:opacity-50"
+                        aria-label="Modelo de respuesta"
+                      >
+                        {models.length === 0 && (
+                          <option value="">Sin modelos (revisa API keys)</option>
+                        )}
+                        {models.map((m) => (
+                          <option
+                            key={`${m.provider}::${m.model_id}`}
+                            value={`${m.provider}::${m.model_id}`}
+                          >
+                            {m.provider === 'groq' ? '⚡' : '✦'} {m.label}
+                            {!m.multimodal ? ' · texto' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <div className="flex items-end gap-2 rounded-2xl border border-white/15 bg-[#0c0e12] p-2 sm:gap-3 sm:p-2.5">
                     <label htmlFor="chat-input" className="sr-only">
                       Escribe tu pregunta multimodal
                     </label>
@@ -630,10 +717,10 @@ export function ChatView({ onBack }: ChatViewProps) {
                       }
                       className="max-h-40 min-h-[44px] flex-1 resize-none bg-transparent px-3 py-3 text-[15px] text-white placeholder:text-white/35 focus:outline-none disabled:opacity-50"
                     />
-                    <button
-                      type="submit"
+                    <DemoSafeButton
                       disabled={busy || !input.trim()}
-                      className="inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[#4eebc8] text-[#050608] transition-all duration-200 hover:scale-105 hover:bg-[#6ff0d4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4eebc8] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
+                      onActivate={() => void submitQuery(input)}
+                      className="inline-flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-[#4eebc8] text-[#050608] transition-colors duration-150 hover:bg-[#6ff0d4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4eebc8] disabled:cursor-not-allowed disabled:opacity-40"
                       aria-label={loading ? 'Consultando' : 'Enviar pregunta'}
                     >
                       {loading ? (
@@ -641,12 +728,12 @@ export function ChatView({ onBack }: ChatViewProps) {
                       ) : (
                         <ArrowUp size={18} strokeWidth={2.5} aria-hidden />
                       )}
-                    </button>
+                    </DemoSafeButton>
                   </div>
                 </form>
               ) : (
                 <div
-                  className={`liquid-glass rounded-2xl p-3 sm:p-4 ${
+                  className={`rounded-2xl border border-white/15 bg-[#0c0e12] p-3 sm:p-4 ${
                     dragOver ? 'ring-1 ring-[#4eebc8]/50' : ''
                   }`}
                   onDragOver={(e) => {
@@ -657,6 +744,7 @@ export function ChatView({ onBack }: ChatViewProps) {
                   onDrop={onDrop}
                 >
                   <input
+                    id={fileInputId}
                     ref={fileInputRef}
                     type="file"
                     multiple
@@ -686,10 +774,9 @@ export function ChatView({ onBack }: ChatViewProps) {
                           <span className="font-[family-name:var(--font-mono)] text-[10px] text-white/35">
                             {(file.size / 1024).toFixed(0)} KB
                           </span>
-                          <button
-                            type="button"
+                          <DemoSafeButton
                             disabled={busy}
-                            onClick={() =>
+                            onActivate={() =>
                               setPendingFiles((prev) =>
                                 prev.filter(
                                   (f) => !(f.name === file.name && f.size === file.size),
@@ -700,27 +787,28 @@ export function ChatView({ onBack }: ChatViewProps) {
                             aria-label={`Quitar ${file.name}`}
                           >
                             <X size={14} aria-hidden />
-                          </button>
+                          </DemoSafeButton>
                         </li>
                       ))}
                     </ul>
                   )}
 
                   <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      disabled={busy || apiStatus === 'offline'}
-                      onClick={() => fileInputRef.current?.click()}
-                      className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-full border border-white/15 bg-white/[0.03] px-4 text-sm text-white/85 transition-colors hover:border-white/30 hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4eebc8] disabled:cursor-not-allowed disabled:opacity-40"
+                    <label
+                      htmlFor={busy || apiStatus === 'offline' ? undefined : fileInputId}
+                      className={`inline-flex h-11 items-center gap-2 rounded-full border border-white/20 bg-[#151820] px-4 text-sm text-white transition-colors hover:border-white/40 hover:bg-[#1c2030] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4eebc8] ${
+                        busy || apiStatus === 'offline'
+                          ? 'cursor-not-allowed opacity-40'
+                          : 'cursor-pointer'
+                      }`}
                     >
                       <Upload size={16} aria-hidden />
                       Elegir archivos
-                    </button>
-                    <button
-                      type="button"
+                    </label>
+                    <DemoSafeButton
                       disabled={busy || apiStatus === 'offline' || pendingFiles.length === 0}
-                      onClick={() => void confirmUpload()}
-                      className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-full bg-[#4eebc8] px-4 text-sm font-medium text-[#050608] transition-all hover:scale-[1.02] hover:bg-[#6ff0d4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4eebc8] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:scale-100"
+                      onActivate={() => void confirmUpload()}
+                      className="inline-flex h-11 cursor-pointer items-center gap-2 rounded-full bg-[#4eebc8] px-4 text-sm font-medium text-[#050608] transition-colors hover:bg-[#6ff0d4] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4eebc8] disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       {uploading ? (
                         <Loader2 size={16} className="animate-spin" aria-hidden />
@@ -730,7 +818,7 @@ export function ChatView({ onBack }: ChatViewProps) {
                       {uploading
                         ? 'Indexando…'
                         : `Indexar ${pendingFiles.length || ''}`.trim()}
-                    </button>
+                    </DemoSafeButton>
                     <p className="ml-auto text-[12px] text-white/40">
                       {pendingFiles.length
                         ? `${pendingFiles.length} listo(s)`
@@ -742,9 +830,16 @@ export function ChatView({ onBack }: ChatViewProps) {
 
               <p className="mt-3 font-[family-name:var(--font-mono)] text-[10px] text-white/30">
                 {mode === 'chat' &&
-                  (selectedDoc
-                    ? `Solo busca en: ${selectedDoc}`
-                    : 'Enter para enviar · busca en todos los archivos')}
+                  (() => {
+                    const m = models.find(
+                      (x) => `${x.provider}::${x.model_id}` === selectedModelKey,
+                    )
+                    const modelHint = m
+                      ? `${m.label}${m.multimodal ? '' : ' · solo texto'}`
+                      : 'modelo por defecto'
+                    if (selectedDoc) return `Solo busca en: ${selectedDoc} · ${modelHint}`
+                    return `Enter para enviar · ${modelHint}`
+                  })()}
                 {mode === 'images' && 'Modo imágenes · indexa figuras en Qdrant'}
                 {mode === 'documents' && 'Modo documentos · LlamaParse + embeddings'}
               </p>
@@ -760,48 +855,44 @@ export function ChatView({ onBack }: ChatViewProps) {
         </aside>
       </div>
 
-      <div
-        className={`fixed inset-0 z-40 lg:hidden ${
-          sourcesOpen ? 'pointer-events-auto' : 'pointer-events-none'
-        }`}
-      >
-        <button
-          type="button"
-          className={`absolute inset-0 cursor-pointer bg-black/60 transition-opacity duration-300 ${
-            sourcesOpen ? 'opacity-100' : 'opacity-0'
-          }`}
-          aria-label="Cerrar panel de fuentes"
-          onClick={() => setSourcesOpen(false)}
-        />
-        <div
-          className={`absolute inset-y-0 right-0 flex w-full max-w-sm flex-col border-l border-white/10 bg-[#050608] p-5 shadow-2xl transition-transform duration-300 ease-out ${
-            sourcesOpen ? 'translate-x-0' : 'translate-x-full'
-          }`}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Fuentes recuperadas"
-        >
-          <div className="mb-4 flex items-center justify-between">
-            <span className="font-[family-name:var(--font-display)] font-semibold">
-              Fuentes
-            </span>
-            <button
-              type="button"
-              onClick={() => setSourcesOpen(false)}
-              className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-white/15 transition-colors duration-200 hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4eebc8]"
-              aria-label="Cerrar"
-            >
-              <X size={18} aria-hidden />
-            </button>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <SourcePanel
-              textSources={latest?.text_sources ?? []}
-              imageSources={latest?.image_sources ?? []}
-            />
+      {/* Mount only while open — an always-mounted full-screen backdrop
+          with opacity-0 still steals clicks (children default to pointer-events:auto). */}
+      {sourcesOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden" role="presentation">
+          <button
+            type="button"
+            className="absolute inset-0 cursor-pointer bg-black/60"
+            aria-label="Cerrar panel de fuentes"
+            onClick={() => setSourcesOpen(false)}
+          />
+          <div
+            className="absolute inset-y-0 right-0 flex w-full max-w-sm flex-col border-l border-white/10 bg-[#050608] p-5 shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Fuentes recuperadas"
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <span className="font-[family-name:var(--font-display)] font-semibold">
+                Fuentes
+              </span>
+              <button
+                type="button"
+                onClick={() => setSourcesOpen(false)}
+                className="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-white/15 transition-colors duration-200 hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4eebc8]"
+                aria-label="Cerrar"
+              >
+                <X size={18} aria-hidden />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <SourcePanel
+                textSources={latest?.text_sources ?? []}
+                imageSources={latest?.image_sources ?? []}
+              />
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

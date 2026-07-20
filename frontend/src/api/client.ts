@@ -3,6 +3,7 @@ import type {
   HealthResponse,
   IngestRequest,
   IngestResponse,
+  ModelListResponse,
   QueryRequest,
   QueryResponse,
 } from '../types/api'
@@ -77,4 +78,8 @@ export function queryDocuments(body: QueryRequest): Promise<QueryResponse> {
 
 export function listDocuments(): Promise<DocumentListResponse> {
   return request<DocumentListResponse>('/api/v1/documents')
+}
+
+export function listModels(): Promise<ModelListResponse> {
+  return request<ModelListResponse>('/api/v1/models')
 }
