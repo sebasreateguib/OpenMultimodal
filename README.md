@@ -1,4 +1,4 @@
-# OpenMultimodal
+# <img src="frontend/public/favicon.svg" width="36" height="36" align="top" alt="OM" /> OpenMultimodal
 
 Agente **Multimodal RAG** (Retrieval-Augmented Generation) con **LlamaIndex**, **LlamaParse**, **Google Gemini** y **Qdrant**.
 
@@ -231,5 +231,3 @@ python main.py --serve
 ## Referencias
 
 - `AGENT.md` — especificación y directivas para agentes de código  
-- `MultimodalGuide.pdf` — guía de arquitectura  
-- `IA Multimodal Concepts and Applications.md` — conceptos del pipeline  
